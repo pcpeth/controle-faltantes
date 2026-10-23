@@ -2,10 +2,11 @@
 // Pegue em: Firebase > Configurações do projeto > Seus aplicativos > Config.
 // Se já tem o bloco antigo no index.html, copie os valores dele para cá.
 export const firebaseConfig = {
-  apiKey: "COLE_AQUI",
+  apiKey: "AIzaSyCiHNbtAVeScG6Wj5jL_KHgPl3wZCnjzt0",
   authDomain: "planilha-faltas-73e21.firebaseapp.com",
   projectId: "planilha-faltas-73e21",
   storageBucket: "planilha-faltas-73e21.firebasestorage.app",
   messagingSenderId: "1025232134575",
-  appId: "1:1025232134575:web:f23b60464d1e3590604f5a"
+  appId: "1:1025232134575:web:f23b60464d1e3590604f5a",
+  measurementId: "G-9PST6ZG9JM"
 };
