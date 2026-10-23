@@ -9,4 +9,5 @@ export const firebaseConfig = {
   messagingSenderId: "1025232134575",
   appId: "1:1025232134575:web:f23b60464d1e3590604f5a",
   measurementId: "G-9PST6ZG9JM"
+  export const adminEmail = "henanbyaze@gmail.com";
 };
