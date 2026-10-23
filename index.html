@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Itens Faltantes</title>
+<style>
+  :root{--bg:#f4f5f7;--card:#fff;--tx:#1f2937;--mut:#6b7280;--bd:#e5e7eb;--pri:#2563eb;--red:#dc2626;--redbg:#fef2f2;--ora:#d97706;--grn:#16a34a}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+  header{background:#111827;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;flex:1}
+  .user{font-size:13px;display:flex;gap:8px;align-items:center}
+  .user button{background:#374151;color:#fff;border:0;padding:4px 10px;border-radius:6px;cursor:pointer}
+  .live{font-size:12px;padding:2px 8px;border-radius:10px;background:#7f1d1d}
+  .live.on{background:#14532d}
+  main{max-width:1250px;margin:0 auto;padding:16px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px}
+  .kpi b{font-size:26px;display:block}
+  .kpi span{color:var(--mut);font-size:12px}
+  .kpi.red b{color:var(--red)}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .tabs{display:flex;gap:4px}
+  .tab{padding:8px 14px;border:1px solid var(--bd);background:#fff;border-radius:8px;cursor:pointer}
+  .tab.active{background:var(--pri);color:#fff;border-color:var(--pri)}
+  input,select,textarea{font:inherit;padding:7px 9px;border:1px solid #cbd5e1;border-radius:6px;background:#fff}
+  button.btn{background:var(--pri);color:#fff;border:0;padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}
+  button.btn.sec{background:#e5e7eb;color:var(--tx)}
+  button.btn.sm{padding:4px 9px;font-size:12px}
+  button.btn.grn{background:var(--grn)}
+  .search{flex:1;min-width:200px}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+  th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--bd);vertical-align:top}
+  th{background:#f9fafb;font-size:12px;color:var(--mut);text-transform:uppercase}
+  tr.crit{background:var(--redbg)}
+  tr.crit td:first-child{border-left:4px solid var(--red)}
+  .tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .t-crit{background:var(--red);color:#fff}.t-alta{background:#fde68a;color:#78350f}.t-normal{background:#e5e7eb;color:#374151}
+  .late{color:var(--red);font-weight:600}
+  .mut{color:var(--mut);font-size:12px}
+  .acts{display:flex;gap:4px;flex-wrap:wrap}
+  .empty{padding:30px;text-align:center;color:var(--mut);background:#fff;border:1px solid var(--bd);border-radius:10px}
+  dialog{border:0;border-radius:12px;padding:20px;width:min(520px,94vw);box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  dialog h3{margin:0 0 12px}
+  label{display:block;margin:10px 0 3px;font-size:12px;color:var(--mut)}
+  dialog input,dialog select,dialog textarea{width:100%}
+  .row{display:flex;gap:10px}.row>div{flex:1}
+  .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+  .hist{max-height:220px;overflow:auto;background:#f9fafb;border:1px solid var(--bd);border-radius:6px;padding:8px;font-size:12px}
+  .hist div{padding:4px 0;border-bottom:1px dashed var(--bd)}
+  .hist div:last-child{border:0}
+  .warn{background:#fef3c7;color:#78350f;padding:8px 10px;border-radius:6px;font-size:12px;margin-top:8px}
+  #cfgmsg{background:#fee2e2;color:#7f1d1d;padding:12px 20px;display:none}
+  .chk{display:flex;flex-wrap:wrap;gap:6px 14px;max-height:120px;overflow:auto;border:1px solid var(--bd);border-radius:6px;padding:8px}
+  .chk label{display:flex;align-items:center;gap:4px;margin:0;color:var(--tx);font-size:13px}
+  .chk input{width:auto}
+  #imp-res table{font-size:12px}
+  .st{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap}
+  .st-novo{background:#dbeafe;color:#1e40af}.st-qtd{background:#fee2e2;color:#991b1b}.st-oc{background:#fef3c7;color:#92400e}.st-ok{background:#dcfce7;color:#166534}
+  details summary{outline:none}
+</style>
+</head>
+<body>
+<div id="cfgmsg">⚠️ Firebase ainda não configurado. Crie/edite o arquivo <b>firebase-config.js</b> com a config do seu projeto.</div>
+<header>
+  <h1>📦 Itens Faltantes</h1>
+  <span id="live" class="live">offline</span>
+  <span id="cadmeta" style="font-size:12px;color:#d1d5db"></span>
+  <div class="user"><span id="who"></span><button onclick="askUser(true)">Trocar</button><button id="admBtn" onclick="admToggle()">Admin</button></div>
+</header>
+
+<main>
+  <div class="cards">
+    <div class="kpi"><b id="k-sem">0</b><span>Sem O.C. (abertos)</span></div>
+    <div class="kpi"><b id="k-com">0</b><span>Com O.C. aguardando</span></div>
+    <div class="kpi red"><b id="k-crit">0</b><span>Críticos abertos</span></div>
+    <div class="kpi red"><b id="k-late">0</b><span>Com data vencida</span></div>
+  </div>
+
+  <div class="bar">
+    <div class="tabs">
+      <div class="tab active" data-tab="sem">Sem O.C.</div>
+      <div class="tab" data-tab="com">Com O.C.</div>
+      <div class="tab" data-tab="hist">Histórico (recebidos)</div>
+    </div>
+    <input id="q" class="search" placeholder="Buscar por código, descrição, O.C., fornecedor...">
+    <button class="btn" onclick="openNew()">+ Nova falta</button>
+    <button class="btn sec" onclick="openImp()">⬆ Planilha de faltantes</button>
+  </div>
+
+  <div id="list"></div>
+</main>
+
+<!-- Nova falta -->
+<dialog id="dNew">
+  <h3>Registrar falta</h3>
+  <label>Código (só números; formata sozinho)</label>
+  <input id="n-cod" placeholder="9-999-99999 ou 99-999-99999" inputmode="numeric" autocomplete="off" style="font-size:18px">
+  <div id="n-info" class="warn" style="display:none"></div>
+  <label>Descrição</label>
+  <input id="n-desc">
+  <div class="row">
+    <div><label>Quantidade faltante</label><input id="n-qtd" type="number" min="0" step="any"></div>
+    <div><label>Unidade</label><input id="n-un" placeholder="un, kg, m..."></div>
+  </div>
+  <details style="margin-top:10px"><summary class="mut" style="cursor:pointer">Mais opções (prioridade, data necessária, observações)</summary>
+  <div class="row">
+    <div><label>Prioridade</label>
+      <select id="n-pri"><option value="normal">Normal</option><option value="alta">Alta</option><option value="critico">Crítico (vermelho)</option></select></div>
+    <div><label>Data necessária</label><input id="n-data" type="date"></div>
+  </div>
+  <label>Observações</label>
+  <textarea id="n-obs" rows="2"></textarea></details>
+  <div id="n-warn" class="warn" style="display:none"></div>
+  <div class="foot"><button class="btn sec" onclick="dNew.close()">Cancelar</button><button class="btn" onclick="saveNew()">Salvar</button></div>
+</dialog>
+
+<!-- Detalhe / ações -->
+<dialog id="dDet">
+  <h3 id="d-title"></h3>
+  <div id="d-info" class="mut"></div>
+  <div id="d-forms"></div>
+  <label>Histórico</label>
+  <div id="d-hist" class="hist"></div>
+  <label>Adicionar observação</label>
+  <div class="row"><input id="d-obs" placeholder="Escreva e clique em Adicionar"><button class="btn sm" style="flex:0" onclick="addObs()">Adicionar</button></div>
+  <div class="foot"><button id="d-del" class="btn sm" style="background:var(--red);display:none;margin-right:auto" onclick="delOne()">🗑 Apagar item</button><button class="btn sec" onclick="dDet.close()">Fechar</button></div>
+</dialog>
+
+<!-- Usuário -->
+<dialog id="dUser">
+  <h3>Quem é você?</h3>
+  <label>Setor</label>
+  <select id="u-setor"><option>Almoxarifado</option><option>PCP</option><option>Compras</option></select>
+  <label>Seu nome</label>
+  <input id="u-nome">
+  <div class="foot"><button class="btn" onclick="saveUser()">Entrar</button></div>
+</dialog>
+
+<!-- Importar / validar faltantes -->
+<dialog id="dImp" style="width:min(980px,96vw)">
+  <h3>Importar / validar planilha de faltantes</h3>
+  <div class="mut">Compara a planilha com os itens em aberto no sistema. Nada é gravado até você clicar em "Aplicar".</div>
+  <input type="file" id="imp-file" accept=".xlsx,.xls,.csv" style="margin-top:10px">
+  <div id="imp-map" style="display:none">
+    <div class="row">
+      <div><label>Coluna do código *</label><select id="i-cod"></select></div>
+      <div><label>Quantidade faltante *</label><select id="i-qtd"></select></div>
+      <div><label>O.C.</label><select id="i-oc"></select></div>
+      <div><label>Data necessária</label><select id="i-data"></select></div>
+    </div>
+    <div class="foot" style="margin-top:8px"><button class="btn" onclick="runValidate()">Validar</button></div>
+  </div>
+  <div id="imp-res"></div>
+  <div class="foot"><button class="btn sec" onclick="dImp.close()">Fechar</button><button id="imp-go" class="btn grn" style="display:none" onclick="applyImp()">Aplicar selecionados</button></div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, arrayUnion, increment, writeBatch }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+/* A config do Firebase fica no arquivo firebase-config.js (criado uma única vez) */
+let firebaseConfig = {apiKey:"COLE_AQUI"}, adminEmail = "";
+try{ ({firebaseConfig, adminEmail = ""} = await import("./firebase-config.js")); }catch(e){ console.warn("firebase-config.js não encontrado", e); }
+
+const $ = id => document.getElementById(id);
+const configured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== "COLE_AQUI";
+if(!configured) $("cfgmsg").style.display = "block";
+
+let db, col, items = [], tab = "sem", cur = null, user = null, cadCur = null, lookupP = Promise.resolve(), qtdAuto = false, auth = null, isAdmin = false, sel = new Set(), visIds = [];
+
+/* ---------- cadastro fixo (cadastro.json, gerado da planilha do ERP) ---------- */
+const CAD = new Map();
+const cadReady = (async () => {
+  try{
+    const r = await fetch("cadastro.json"); if(!r.ok) throw new Error("HTTP "+r.status);
+    const j = await r.json();
+    for(const a of j.itens){
+      const ex = {};
+      if(a[4]) ex["Família"]=a[4];
+      if(a[5] && a[5]!=="0") ex["Comprador (cód.)"]=a[5];
+      if(a[6] && a[6]!=="0") ex["Programador (cód.)"]=a[6];
+      if(a[7]) ex["Lote múltiplo"]=a[7];
+      if(a[8]) ex["Ressuprimento (dias)"]=a[8];
+      if(a[9]) ex["Tipo"]= a[9]==="B" ? "Beneficiado" : "Comprado";
+      CAD.set(a[0], {descricao:a[1], unidade:a[2], loteMinimo:a[3]||null, extras:ex});
+    }
+    const [y,m,d] = (j.gerado||"").split("-");
+    $("cadmeta").textContent = `Cadastro: ${CAD.size} itens${y?` · base de ${d}/${m}/${y}`:""}`;
+  }catch(e){ $("cadmeta").textContent = "⚠ Cadastro não carregado"; console.warn(e); }
+})();
+
+if(configured){
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  auth = getAuth(app);
+  onAuthStateChanged(auth, u => {
+    isAdmin = !!(u && adminEmail && u.email === adminEmail);
+    if(u && !isAdmin){ alert("Esta conta Google não é a do administrador."); signOut(auth); return; }
+    refreshAdmin();
+  });
+  col = collection(db, "faltantes");
+  onSnapshot(col, snap => {
+    items = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    $("live").textContent = "● tempo real"; $("live").classList.add("on");
+    render();
+    if(dDet.open && cur){ const c = items.find(i=>i.id===cur); if(c) renderDet(c); }
+  }, err => { $("live").textContent = "erro"; $("live").classList.remove("on"); alert("Erro ao conectar: "+err.message); });
+}
+
+/* ---------- usuário ---------- */
+function loadUser(){ try{ user = JSON.parse(localStorage.getItem("faltantes_user")); }catch(e){} }
+window.askUser = (force) => { if(user){ $("u-setor").value=user.setor; $("u-nome").value=user.nome; } dUser.showModal(); };
+window.saveUser = () => {
+  const nome = $("u-nome").value.trim();
+  if(!nome) return alert("Informe seu nome.");
+  user = {setor:$("u-setor").value, nome};
+  localStorage.setItem("faltantes_user", JSON.stringify(user));
+  dUser.close(); showUser(); render();
+};
+function showUser(){ $("who").textContent = user ? `${user.setor} · ${user.nome}` : ""; }
+const dNew=$("dNew"), dDet=$("dDet"), dUser=$("dUser");
+dUser.addEventListener("cancel", e => { if(!user) e.preventDefault(); });
+
+/* ---------- código ---------- */
+function fmtCod(v){
+  const d = v.replace(/\D/g,"").slice(0,10);
+  if(d.length<=1) return d;
+  // formato 9-999-99999 (9 dígitos) ou 99-999-99999 (10 dígitos)
+  if(d.length<=9) return d.length<=4 ? d[0]+"-"+d.slice(1) : d[0]+"-"+d.slice(1,4)+(d.length>4?"-"+d.slice(4):"");
+  return d.slice(0,2)+"-"+d.slice(2,5)+"-"+d.slice(5);
+}
+const codOk = c => /^(\d-\d{3}-\d{5}|\d{2}-\d{3}-\d{5})$/.test(c);
+$("n-cod").addEventListener("input", e => {
+  const raw = e.target.value.replace(/\D/g,"");
+  // com 10 dígitos digitados usa 2-3-5; senão 1-3-5
+  e.target.value = raw.length>=10 ? raw.slice(0,2)+"-"+raw.slice(2,5)+"-"+raw.slice(5,10)
+    : raw.length>4 ? raw[0]+"-"+raw.slice(1,4)+"-"+raw.slice(4) : raw.length>1 ? raw[0]+"-"+raw.slice(1) : raw;
+  checkDup(); lookupP = lookupCad(e.target.value);
+});
+$("n-qtd").addEventListener("input", () => { qtdAuto = false; });
+
+function abertoPorCod(c){ return items.find(i => i.codigo===c && i.status==="aberto"); }
+function checkDup(){
+  const c = $("n-cod").value, w = $("n-warn"), ex = abertoPorCod(c);
+  if(ex){ w.style.display="block"; w.textContent=`Este código já está em aberto (qtd ${ex.qtdTotal}). A quantidade informada será SOMADA ao item existente.`; if(!$("n-desc").value) $("n-desc").value=ex.descricao||""; }
+  else w.style.display="none";
+}
+
+/* ---------- ações ---------- */
+const now = () => Date.now();
+const ev = (tipo, texto) => ({t:now(), setor:user.setor, nome:user.nome, tipo, texto});
+const needUser = () => { if(!user){ askUser(); return false; } if(!configured){ alert("Configure o Firebase primeiro."); return false; } return true; };
+
+window.openNew = () => {
+  if(!needUser()) return;
+  ["n-cod","n-desc","n-qtd","n-un","n-data","n-obs"].forEach(i=>$(i).value=""); $("n-pri").value="normal"; $("n-warn").style.display="none";
+  cadCur=null; qtdAuto=false; $("n-info").style.display="none";
+  dNew.showModal(); setTimeout(()=>$("n-cod").focus(),50);
+};
+window.saveNew = async () => {
+  await lookupP;
+  const cod=$("n-cod").value, desc=$("n-desc").value.trim(), qtd=parseFloat($("n-qtd").value);
+  if(!codOk(cod)) return alert("Código inválido. Use 9-999-99999 ou 99-999-99999.");
+  if(!qtd || qtd<=0) return alert("Informe a quantidade.");
+  if(!desc && !cadCur && !abertoPorCod(cod)) return alert("Código fora do cadastro: informe a descrição.");
+  const ex = abertoPorCod(cod), obs=$("n-obs").value.trim();
+  try{
+    if(ex){
+      const upd = { qtdTotal: increment(qtd), historico: arrayUnion(ev("falta", `+${qtd} ${ex.unidade||""} adicionada(s)${obs?" — "+obs:""}`)) };
+      if($("n-pri").value==="critico") upd.prioridade="critico";
+      const dn=$("n-data").value; if(dn && (!ex.dataNecessaria || dn<ex.dataNecessaria)) upd.dataNecessaria=dn;
+      await updateDoc(doc(db,"faltantes",ex.id), upd);
+    } else {
+      await addDoc(col, {
+        codigo:cod, descricao:desc, qtdTotal:qtd, qtdRecebida:0, unidade:$("n-un").value.trim(),
+        loteMinimo:cadCur?.loteMinimo ?? null, extras:cadCur?.extras || {},
+        prioridade:$("n-pri").value, dataNecessaria:$("n-data").value||"", status:"aberto",
+        oc:"", fornecedor:"", previsao:"", criadoEm:now(), criadoPor:`${user.setor} · ${user.nome}`,
+        historico:[ev("falta", `Falta registrada: ${qtd} ${$("n-un").value.trim()}${obs?" — "+obs:""}`)]
+      });
+    }
+    dNew.close();
+  }catch(e){ alert("Erro ao salvar: "+e.message); }
+};
+
+window.openDet = id => { cur=id; renderDet(items.find(i=>i.id===id)); if(!dDet.open) dDet.showModal(); };
+function renderDet(it){
+  $("d-title").textContent = `${it.codigo} — ${it.descricao||"(sem descrição)"}`;
+  const falta = Math.max(0,(it.qtdTotal||0)-(it.qtdRecebida||0));
+  $("d-info").innerHTML = `Total faltante: <b>${it.qtdTotal}</b> ${esc(it.unidade||"")} · Recebido: <b>${it.qtdRecebida||0}</b> · Saldo: <b>${falta}</b><br>
+    Prioridade: ${it.prioridade} · Necessário até: ${fmtD(it.dataNecessaria)||"—"}${it.loteMinimo!=null?` · Lote mín.: <b>${it.loteMinimo}</b>`:""}${extrasHtml(it)}<br>
+    O.C.: <b>${esc(it.oc||"—")}</b> · Fornecedor: ${esc(it.fornecedor||"—")} · Previsão: ${fmtD(it.previsao)||"—"}`;
+  let f = "";
+  if(it.status==="aberto" && user){
+    if(user.setor==="PCP") f += `<label>PCP — informar O.C.</label><div class="row"><input id="f-oc" value="${esc(it.oc||"")}" placeholder="Nº da O.C."><button class="btn sm" style="flex:0" onclick="setOC()">Salvar O.C.</button></div>`;
+    if(user.setor==="Compras") f += `<label>Compras — follow-up</label>
+      <div class="row"><input id="f-forn" value="${esc(it.fornecedor||"")}" placeholder="Fornecedor"><input id="f-prev" type="date" value="${it.previsao||""}"></div>
+      <div class="row" style="margin-top:6px"><input id="f-fu" placeholder="Retorno do fornecedor / ação feita"><button class="btn sm" style="flex:0" onclick="setFU()">Salvar</button></div>`;
+    if(user.setor==="Almoxarifado") f += `<label>Almoxarifado — registrar recebimento</label>
+      <div class="row"><input id="f-rec" type="number" min="0" step="any" placeholder="Qtd recebida" value="${falta}"><label style="display:flex;align-items:center;gap:6px;margin:0;color:var(--tx)"><input type="checkbox" id="f-nf" style="width:auto"> NF ainda não liberada</label></div>
+      <div class="row" style="margin-top:6px"><button class="btn grn sm" onclick="setRec()">Registrar recebimento</button></div>`;
+    f += corrForm(it);
+    f += `<div class="mut" style="margin-top:8px">Alterar prioridade: <select id="f-pri" onchange="setPri()"><option value="normal">Normal</option><option value="alta">Alta</option><option value="critico">Crítico</option></select></div>`;
+  }
+  $("d-forms").innerHTML = f;
+  $("d-del").style.display = isAdmin ? "inline-block" : "none";
+  if($("f-pri")) $("f-pri").value = it.prioridade;
+  $("d-hist").innerHTML = (it.historico||[]).slice().sort((a,b)=>b.t-a.t).map(h=>`<div><b>${esc(h.setor)} · ${esc(h.nome)}</b> <span class="mut">${new Date(h.t).toLocaleString("pt-BR")}</span><br>${esc(h.texto)}</div>`).join("") || "<div class='mut'>Sem registros.</div>";
+}
+const upd = async (data) => { try{ await updateDoc(doc(db,"faltantes",cur), data);}catch(e){alert("Erro: "+e.message);} };
+const curIt = () => items.find(i=>i.id===cur);
+window.setOC = () => { const v=$("f-oc").value.trim(); if(!v) return alert("Informe a O.C."); upd({oc:v, historico:arrayUnion(ev("oc",`O.C. informada: ${v}`))}); };
+window.setFU = () => {
+  const forn=$("f-forn").value.trim(), prev=$("f-prev").value, fu=$("f-fu").value.trim();
+  if(!forn && !prev && !fu) return alert("Preencha algo.");
+  upd({fornecedor:forn, previsao:prev, historico:arrayUnion(ev("followup",`Follow-up${forn?" ("+forn+")":""}${prev?" · previsão "+fmtD(prev):""}${fu?": "+fu:""}`))});
+  $("f-fu").value="";
+};
+window.setRec = () => {
+  const it=curIt(), q=parseFloat($("f-rec").value);
+  if(!q||q<=0) return alert("Informe a quantidade recebida.");
+  const total=(it.qtdRecebida||0)+q, fecha = total>=it.qtdTotal, nf=$("f-nf").checked;
+  const d = { qtdRecebida:increment(q), historico:arrayUnion(ev("recebimento",`Recebido ${q} ${it.unidade||""}${nf?" (NF ainda não liberada)":""}${fecha?" — item completo":" — parcial"}`)) };
+  if(fecha){ d.status="recebido"; d.recebidoEm=now(); }
+  upd(d);
+};
+window.setPri = () => upd({prioridade:$("f-pri").value, historico:arrayUnion(ev("prioridade",`Prioridade alterada para ${$("f-pri").value}`))});
+window.addObs = () => {
+  if(!needUser()) return; const t=$("d-obs").value.trim(); if(!t) return;
+  upd({historico:arrayUnion(ev("obs",t))}); $("d-obs").value="";
+};
+
+/* ---------- utilitários de planilha ---------- */
+const normCod = v => {
+  const d = String(v ?? "").replace(/\D/g,"");
+  return d.length===9 ? d[0]+"-"+d.slice(1,4)+"-"+d.slice(4)
+       : d.length===10 ? d.slice(0,2)+"-"+d.slice(2,5)+"-"+d.slice(5) : null;
+};
+const num = v => {
+  if(typeof v==="number") return isFinite(v) ? v : null;
+  let s = String(v ?? "").trim().replace(/\s/g,"");
+  if(!s) return null;
+  if(s.includes(",")) s = s.replace(/\./g,"").replace(",",".");
+  const n = parseFloat(s); return isNaN(n) ? null : n;
+};
+const toISO = v => {
+  if(v instanceof Date && !isNaN(v)) return new Date(v.getTime()+12*3600e3).toISOString().slice(0,10);
+  const s = String(v ?? "").trim();
+  let m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+  if(m) return `${m[3].length===2?"20"+m[3]:m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[0] : "";
+};
+async function readSheet(file){
+  let wb;
+  if(/\.csv$/i.test(file.name)) wb = XLSX.read(await file.text(), {type:"string", cellDates:true});
+  else wb = XLSX.read(await file.arrayBuffer(), {type:"array", cellDates:true});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:"", raw:true});
+  const h = rows.findIndex(r => r.filter(c => String(c).trim()!=="").length >= 2);
+  if(h<0) throw new Error("Planilha vazia ou sem cabeçalho.");
+  const headers = rows[h].map((c,i) => String(c).trim() || `Coluna ${i+1}`);
+  const data = rows.slice(h+1).map((r,i)=>({r, linha:h+2+i})).filter(x => x.r.some(c => String(c).trim()!==""));
+  return {headers, data};
+}
+const guess = (headers, re) => headers.findIndex(h => re.test(h));
+function fillSel(id, headers, guessIdx, optional){
+  $(id).innerHTML = (optional?`<option value="-1">— não usar —</option>`:"") +
+    headers.map((h,i)=>`<option value="${i}">${esc(h)}</option>`).join("");
+  $(id).value = guessIdx>=0 ? String(guessIdx) : (optional?"-1":"0");
+}
+
+/* ---------- cadastro: consulta ao digitar o código ---------- */
+let lookupSeq = 0;
+async function lookupCad(cod){
+  const info = $("n-info"), hadCad = !!cadCur;
+  cadCur = null;
+  if(!codOk(cod)){
+    if(hadCad){ $("n-desc").value=""; $("n-un").value=""; if(qtdAuto) $("n-qtd").value=""; qtdAuto=false; }
+    info.style.display="none"; return;
+  }
+  const seq = ++lookupSeq;
+  try{
+    await cadReady;
+    if(seq!==lookupSeq) return;
+    info.style.display="block";
+    const hit = CAD.get(cod);
+    if(hit){
+      cadCur = hit;
+      info.style.background="#dcfce7"; info.style.color="#14532d";
+      info.innerHTML = `✔ <b>${esc(cadCur.descricao||"(sem descrição)")}</b>${cadCur.unidade?" · "+esc(cadCur.unidade):""}${cadCur.loteMinimo!=null?" · lote mín. "+cadCur.loteMinimo:""}`;
+      $("n-desc").value = cadCur.descricao || ""; $("n-un").value = cadCur.unidade || "";
+      if((!$("n-qtd").value || qtdAuto) && cadCur.loteMinimo){ $("n-qtd").value = cadCur.loteMinimo; qtdAuto = true; }
+    } else {
+      if(hadCad){ $("n-desc").value=""; $("n-un").value=""; if(qtdAuto) $("n-qtd").value=""; qtdAuto=false; }
+      info.style.background="#fef3c7"; info.style.color="#78350f";
+      info.textContent = "⚠ Código não encontrado no cadastro — preencha a descrição.";
+    }
+  }catch(e){ info.style.display="none"; }
+}
+dNew.addEventListener("keydown", e => {
+  if(e.key==="Enter" && e.target.tagName!=="TEXTAREA"){ e.preventDefault(); saveNew(); }
+});
+
+/* ---------- correção de dados do item ---------- */
+const extrasHtml = it => {
+  const e = it.extras || {}, ks = Object.keys(e);
+  return ks.length ? `<br>${ks.map(k=>`${esc(k)}: <b>${esc(e[k])}</b>`).join(" · ")}` : "";
+};
+function corrForm(it){
+  return `<details style="margin-top:8px"><summary class="mut" style="cursor:pointer">✏️ Corrigir dados do item</summary>
+    <label>Descrição</label><input id="c-desc" value="${esc(it.descricao||"")}">
+    <div class="row">
+      <div><label>Qtd total faltante</label><input id="c-qtd" type="number" min="0" step="any" value="${it.qtdTotal}"></div>
+      <div><label>Unidade</label><input id="c-un" value="${esc(it.unidade||"")}"></div>
+      <div><label>Necessário até</label><input id="c-data" type="date" value="${it.dataNecessaria||""}"></div>
+    </div>
+    <div class="foot" style="margin-top:8px"><button class="btn sm" onclick="saveCorr()">Salvar correção</button></div></details>`;
+}
+window.saveCorr = () => {
+  const it = curIt(); if(!it) return;
+  const desc=$("c-desc").value.trim(), qtd=parseFloat($("c-qtd").value), un=$("c-un").value.trim(), dt=$("c-data").value;
+  if(!qtd || qtd <= (it.qtdRecebida||0)) return alert(`A quantidade total deve ser maior que o já recebido (${it.qtdRecebida||0}).`);
+  const ch=[], d={};
+  if(desc!==(it.descricao||"")){ d.descricao=desc; ch.push(`descrição: "${it.descricao||""}" → "${desc}"`); }
+  if(qtd!==it.qtdTotal){ d.qtdTotal=qtd; ch.push(`qtd total: ${it.qtdTotal} → ${qtd}`); }
+  if(un!==(it.unidade||"")){ d.unidade=un; ch.push(`unidade: "${it.unidade||""}" → "${un}"`); }
+  if(dt!==(it.dataNecessaria||"")){ d.dataNecessaria=dt; ch.push(`data necessária: ${fmtD(it.dataNecessaria)||"—"} → ${fmtD(dt)||"—"}`); }
+  if(!ch.length) return alert("Nada foi alterado.");
+  d.historico = arrayUnion(ev("correcao", "Correção — "+ch.join("; ")));
+  upd(d);
+};
+
+const dImp=$("dImp");
+
+/* ---------- importar / validar planilha de faltantes ---------- */
+let impSheet=null, impRows=[], impBad=[], impOnly=[];
+window.openImp = () => {
+  if(!needUser()) return;
+  $("imp-file").value=""; $("imp-map").style.display="none"; $("imp-res").innerHTML=""; $("imp-go").style.display="none"; dImp.showModal();
+};
+$("imp-file").addEventListener("change", async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    impSheet = await readSheet(f); const H = impSheet.headers;
+    fillSel("i-cod", H, guess(H,/c[oó]d|item|material|produto/i), false);
+    fillSel("i-qtd", H, guess(H,/qtd|quant|falta/i), false);
+    fillSel("i-oc", H, guess(H,/o\.?c\.?$|ordem|pedido/i), true);
+    fillSel("i-data", H, guess(H,/data|necess|prazo/i), true);
+    $("imp-map").style.display="block"; $("imp-res").innerHTML=`<div class="mut" style="margin-top:8px">${impSheet.data.length} linhas lidas. Confira as colunas e clique em Validar.</div>`;
+    $("imp-go").style.display="none";
+  }catch(err){ alert("Não consegui ler a planilha: "+err.message); }
+});
+window.runValidate = async () => {
+  const iC=+$("i-cod").value, iQ=+$("i-qtd").value, iO=+$("i-oc").value, iD=+$("i-data").value;
+  const agg=new Map(); impBad=[];
+  impSheet.data.forEach(({r,linha})=>{
+    const cod=normCod(r[iC]), q=num(r[iQ]);
+    if(!cod || q==null || q<=0){ impBad.push({linha, cod:String(r[iC]), q:String(r[iQ])}); return; }
+    const a=agg.get(cod) || {cod, q:0, oc:"", data:"", linhas:[]};
+    a.q+=q; a.linhas.push(linha);
+    if(iO>=0){ const o=String(r[iO]).trim(); if(o && !a.oc) a.oc=o; }
+    if(iD>=0 && !a.data) a.data=toISO(r[iD]);
+    agg.set(cod,a);
+  });
+  $("imp-res").innerHTML=`<div class="mut" style="margin-top:8px">Validando...</div>`;
+  impRows=[...agg.values()].map(a=>{
+    const it=abertoPorCod(a.cod);
+    if(!it) return {...a, st:"novo", act:"criar"};
+    const saldo=it.qtdTotal-(it.qtdRecebida||0);
+    if(Math.abs(saldo-a.q)>1e-9) return {...a, it, saldo, st:"qtd", act:"ignorar"};
+    if(a.oc && it.oc && a.oc!==it.oc) return {...a, it, saldo, st:"ocdif", act:"ignorar"};
+    if(a.oc && !it.oc) return {...a, it, saldo, st:"ocnovo", act:"atualizar"};
+    return {...a, it, saldo, st:"ok", act:"nada"};
+  });
+  const novos=impRows.filter(r=>r.st==="novo");
+  await cadReady;
+  novos.forEach(r => { r.cad = CAD.get(r.cod) || null; });
+  const cods=new Set(impRows.map(r=>r.cod));
+  impOnly=items.filter(i=>i.status==="aberto" && !cods.has(i.codigo));
+  renderImp();
+};
+const ST = {novo:["st-novo","Novo (não está no sistema)"], qtd:["st-qtd","Qtd diferente"], ocdif:["st-oc","O.C. diferente"], ocnovo:["st-oc","O.C. nova"], ok:["st-ok","Confere"]};
+function renderImp(){
+  const cnt = k => impRows.filter(r=>r.st===k).length;
+  let h = `<div class="cards" style="margin:12px 0">
+    <div class="kpi"><b>${cnt("ok")}</b><span>Conferem</span></div>
+    <div class="kpi"><b>${cnt("novo")}</b><span>Novos</span></div>
+    <div class="kpi red"><b>${cnt("qtd")+cnt("ocdif")}</b><span>Divergências</span></div>
+    <div class="kpi"><b>${cnt("ocnovo")}</b><span>O.C. a preencher</span></div>
+    <div class="kpi red"><b>${impBad.length}</b><span>Linhas inválidas</span></div>
+    <div class="kpi"><b>${impOnly.length}</b><span>Só no sistema</span></div></div>`;
+  const rows = impRows.map((r,i)=>({r,i})).filter(x=>x.r.st!=="ok");
+  if(rows.length){
+    h += `<table><thead><tr><th>Código</th><th>Descrição</th><th>Planilha</th><th>Sistema (saldo)</th><th>O.C. planilha / sistema</th><th>Situação</th><th>Ação</th></tr></thead><tbody>` +
+      rows.map(({r,i})=>{
+        const desc = r.it ? r.it.descricao : (r.cad ? r.cad.descricao : "");
+        const sem = r.st==="novo" && !r.cad ? `<div class="late">sem cadastro</div>` : "";
+        const opts = r.st==="novo" ? ["criar","ignorar"] : r.st==="qtd"||r.st==="ocdif" ? ["ignorar","atualizar"] : ["atualizar","ignorar"];
+        return `<tr><td><b>${esc(r.cod)}</b>${r.linhas.length>1?`<div class="mut">${r.linhas.length} linhas somadas</div>`:`<div class="mut">linha ${r.linhas[0]}</div>`}</td>
+          <td>${esc(desc)}${sem}</td><td>${r.q}</td><td>${r.it?r.saldo:"—"}</td>
+          <td>${esc(r.oc||"—")} / ${esc(r.it?.oc||"—")}</td>
+          <td><span class="st ${ST[r.st][0]}">${ST[r.st][1]}</span></td>
+          <td><select id="act-${i}">${opts.map(o=>`<option ${o===r.act?"selected":""}>${o}</option>`).join("")}</select></td></tr>`;
+      }).join("") + `</tbody></table>`;
+  } else h += `<div class="empty">Tudo confere com o sistema. 🎉</div>`;
+  if(impBad.length) h += `<details style="margin-top:10px"><summary class="late" style="cursor:pointer">${impBad.length} linhas com código ou quantidade inválidos (não serão importadas)</summary>
+    <div class="hist">${impBad.slice(0,200).map(b=>`<div>linha ${b.linha}: código "${esc(b.cod)}" · qtd "${esc(b.q)}"</div>`).join("")}</div></details>`;
+  if(impOnly.length) h += `<details style="margin-top:10px"><summary class="mut" style="cursor:pointer">${impOnly.length} itens abertos no sistema que NÃO estão na planilha</summary>
+    <div class="hist">${impOnly.map(i=>`<div><b>${esc(i.codigo)}</b> ${esc(i.descricao||"")} · saldo ${i.qtdTotal-(i.qtdRecebida||0)}</div>`).join("")}</div></details>`;
+  $("imp-res").innerHTML = h;
+  $("imp-go").style.display = rows.length ? "inline-block" : "none";
+}
+window.applyImp = async () => {
+  const ops=[]; let c=0,a=0;
+  impRows.forEach((r,i)=>{
+    const el=$(`act-${i}`); if(!el) return; const act=el.value;
+    if(act==="criar" && r.st==="novo"){
+      ops.push(b=>b.set(doc(col), {
+        codigo:r.cod, descricao:r.cad?.descricao||"", unidade:r.cad?.unidade||"", loteMinimo:r.cad?.loteMinimo ?? null, extras:r.cad?.extras||{},
+        qtdTotal:r.q, qtdRecebida:0, prioridade:"normal", dataNecessaria:r.data||"", status:"aberto",
+        oc:r.oc||"", fornecedor:"", previsao:"", criadoEm:now(), criadoPor:`${user.setor} · ${user.nome}`,
+        historico:[ev("importacao",`Importado da planilha: ${r.q}${r.oc?" · O.C. "+r.oc:""}`)]
+      })); c++;
+    } else if(act==="atualizar" && r.it){
+      const d={}, tx=[];
+      if(r.st==="qtd"){ d.qtdTotal=(r.it.qtdRecebida||0)+r.q; tx.push(`saldo ${r.saldo} → ${r.q}`); }
+      if(r.oc && (!r.it.oc || r.st==="ocdif")){ d.oc=r.oc; tx.push(`O.C. ${r.it.oc||"—"} → ${r.oc}`); }
+      if(!tx.length) return;
+      d.historico=arrayUnion(ev("importacao","Ajustado pela planilha — "+tx.join("; ")));
+      ops.push(b=>b.update(doc(db,"faltantes",r.it.id), d)); a++;
+    }
+  });
+  if(!ops.length) return alert("Nenhuma ação selecionada (tudo em 'ignorar').");
+  if(!confirm(`Aplicar: ${c} novos e ${a} atualizações?`)) return;
+  try{
+    for(let i=0;i<ops.length;i+=400){ const b=writeBatch(db); ops.slice(i,i+400).forEach(f=>f(b)); await b.commit(); }
+    alert(`Pronto: ${c} criados, ${a} atualizados.`); dImp.close();
+  }catch(e){ alert("Erro ao aplicar: "+e.message); }
+};
+
+/* ---------- admin: login Google e exclusão ---------- */
+function refreshAdmin(){
+  $("admBtn").textContent = isAdmin ? "🔑 Admin · Sair" : "Admin";
+  if(!isAdmin) sel.clear();
+  $("d-del").style.display = isAdmin ? "inline-block" : "none";
+  render();
+  if(dDet.open && cur){ const c = items.find(i=>i.id===cur); if(c) renderDet(c); }
+}
+window.admToggle = async () => {
+  if(!configured) return alert("Configure o Firebase primeiro.");
+  if(isAdmin){ await signOut(auth); return; }
+  if(!adminEmail) return alert("Falta definir o adminEmail no arquivo firebase-config.js.");
+  try{ await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch(e){ if(e.code!=="auth/popup-closed-by-user" && e.code!=="auth/cancelled-popup-request") alert("Não consegui entrar: "+e.message); }
+};
+window.toggleSel = (id,on) => { on ? sel.add(id) : sel.delete(id); const b=$("delSel"); if(b) b.textContent=`🗑 Apagar selecionados (${sel.size})`; };
+window.toggleAllSel = on => { visIds.forEach(id => on ? sel.add(id) : sel.delete(id)); render(); };
+window.delSel = () => confirmDel([...sel], false);
+window.delOne = () => confirmDel([cur], true);
+async function confirmDel(ids, fromDet){
+  if(!isAdmin || !ids.length) return;
+  const ex = ids.map(id => items.find(i=>i.id===id)).filter(Boolean);
+  if(!ex.length) return;
+  const lista = ex.slice(0,8).map(i=>i.codigo).join(", ") + (ex.length>8 ? ` e mais ${ex.length-8}` : "");
+  if(!confirm(`Apagar DEFINITIVAMENTE ${ex.length} item(ns)?\n${lista}\n\nIsso não pode ser desfeito.`)) return;
+  try{
+    for(let i=0;i<ex.length;i+=400){
+      const b=writeBatch(db); ex.slice(i,i+400).forEach(x=>b.delete(doc(db,"faltantes",x.id))); await b.commit();
+    }
+    ids.forEach(id=>sel.delete(id));
+    if(fromDet) dDet.close();
+  }catch(e){ alert("Erro ao apagar (confira as regras do Firestore): "+e.message); }
+}
+
+/* ---------- lista ---------- */
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtD = d => d ? d.split("-").reverse().join("/") : "";
+const today = () => new Date().toISOString().slice(0,10);
+const rank = {critico:0,alta:1,normal:2};
+
+function render(){
+  const abertos = items.filter(i=>i.status==="aberto");
+  const sem = abertos.filter(i=>!i.oc), com = abertos.filter(i=>i.oc);
+  $("k-sem").textContent=sem.length; $("k-com").textContent=com.length;
+  $("k-crit").textContent=abertos.filter(i=>i.prioridade==="critico").length;
+  $("k-late").textContent=abertos.filter(i=>i.dataNecessaria && i.dataNecessaria<today()).length;
+
+  const q=$("q").value.toLowerCase().trim();
+  let rows = tab==="sem"?sem : tab==="com"?com : items.filter(i=>i.status==="recebido");
+  if(q) rows = rows.filter(i=>[i.codigo,i.descricao,i.oc,i.fornecedor].join(" ").toLowerCase().includes(q));
+  rows = rows.slice().sort((a,b)=> tab==="hist" ? (b.recebidoEm||0)-(a.recebidoEm||0)
+    : (rank[a.prioridade]-rank[b.prioridade]) || ((a.dataNecessaria||"9999")>(b.dataNecessaria||"9999")?1:-1));
+
+  visIds = rows.map(i=>i.id);
+  sel.forEach(id => { if(!items.some(i=>i.id===id)) sel.delete(id); });
+  if(!rows.length){ $("list").innerHTML = `<div class="empty">Nada por aqui.</div>`; return; }
+  const hist = tab==="hist";
+  $("list").innerHTML = (isAdmin ? `<div class="bar" style="margin-bottom:8px"><button id="delSel" class="btn sm" style="background:var(--red)" onclick="delSel()">🗑 Apagar selecionados (${sel.size})</button><span class="mut">Modo admin: marque as linhas que deseja apagar</span></div>` : "") +
+    `<table><thead><tr>${isAdmin ? `<th style="width:28px"><input type="checkbox" onchange="toggleAllSel(this.checked)" ${visIds.length && visIds.every(id=>sel.has(id)) ? "checked" : ""}></th>` : ""}<th>Código</th><th>Descrição</th><th>Qtd faltante</th><th>Prioridade</th><th>Necessário até</th>
+    ${hist?"<th>Recebido em</th>":"<th>O.C.</th><th>Fornecedor / previsão</th>"}<th></th></tr></thead><tbody>` +
+    rows.map(i=>{
+      const saldo=Math.max(0,i.qtdTotal-(i.qtdRecebida||0)), late=!hist && i.dataNecessaria && i.dataNecessaria<today();
+      return `<tr class="${i.prioridade==="critico"&&!hist?"crit":""}">${isAdmin ? `<td><input type="checkbox" ${sel.has(i.id)?"checked":""} onchange="toggleSel('${i.id}',this.checked)"></td>` : ""}
+        <td><b>${esc(i.codigo)}</b></td><td>${esc(i.descricao)}</td>
+        <td>${hist?i.qtdTotal:saldo} ${esc(i.unidade||"")}${!hist&&i.qtdRecebida?`<div class="mut">de ${i.qtdTotal} (recebido ${i.qtdRecebida})</div>`:""}</td>
+        <td><span class="tag t-${i.prioridade}">${i.prioridade==="critico"?"CRÍTICO":i.prioridade}</span></td>
+        <td class="${late?"late":""}">${fmtD(i.dataNecessaria)||"—"}${late?" ⚠":""}</td>
+        ${hist?`<td>${i.recebidoEm?new Date(i.recebidoEm).toLocaleDateString("pt-BR"):""}</td>`
+          :`<td>${esc(i.oc||"—")}</td><td>${esc(i.fornecedor||"—")}${i.previsao?`<div class="mut">prev. ${fmtD(i.previsao)}</div>`:""}</td>`}
+        <td><button class="btn sm" onclick="openDet('${i.id}')">Abrir</button></td></tr>`;
+    }).join("") + `</tbody></table>`;
+}
+
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active")); t.classList.add("active"); tab=t.dataset.tab; render();
+});
+$("q").addEventListener("input", render);
+
+loadUser(); showUser(); if(!user) askUser(); render();
+</script>
+</body>
+</html>
