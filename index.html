@@ -417,14 +417,15 @@
 </dialog>
 
 <!-- Registrar envio em lote + pedir NF à expedição -->
-<dialog id="dNF" style="width:min(680px,95vw)">
+<dialog id="dNF" style="width:min(720px,95vw);max-height:92vh;overflow:auto">
   <h3>🧾 NF emitida</h3>
   <div class="mut">Anexe o PDF da NF: o sistema lê sozinho o número e a data de emissão, e a Logística imprime direto daqui para entregar ao terceiro que vai coletar.</div>
-  <div id="nf-lista" style="margin:8px 0"></div>
+  <div id="nf-lista" style="margin:8px 0;max-height:22vh;overflow:auto"></div>
   <label>PDF da NF (até 700 KB) *</label><input id="nf-arq" type="file" accept="application/pdf,image/*" onchange="nfLer()">
   <div class="ro" id="nf-ler" style="display:none;margin-top:8px"></div>
+  <div id="nf-conf" style="display:none;margin-top:8px"></div>
   <div class="row"><div id="nf-num-wrap"><label>Número da NF *</label><input id="nf-num"></div><div><label>Data de emissão *</label><input id="nf-dt" type="date"></div></div>
-  <div class="foot"><button class="btn sec" onclick="$('dNF').close()">Cancelar</button><button class="btn" onclick="saveNF()">✓ Confirmar NF emitida</button></div>
+  <div class="foot"><button class="btn sec" onclick="$('dNF').close()">Cancelar</button><button class="btn" id="nf-btn" onclick="saveNF()">✓ Confirmar NF emitida</button></div>
 </dialog>
 <dialog id="dCol" style="width:min(680px,95vw)">
   <h3>🚚 Registrar coleta pelo terceiro</h3>
@@ -1959,7 +1960,7 @@ window.selNFTodas = on => { ops.filter(o=>o.status==="aguardaNF").forEach(o=>on?
 window.selColT = (id,on) => { on?selCol.add(id):selCol.delete(id); lblN("btn-col","🚚 Registrar coleta",nCol()); };
 window.selColTodas = on => { ops.filter(o=>o.status==="nfEmitida").forEach(o=>on?selCol.add(o.id):selCol.delete(o.id)); render(); };
 const miniTab = l => `<table class="gt"><thead><tr><th>OP</th><th>Código</th><th>Descrição</th><th>Qtd</th></tr></thead><tbody>${l.map(o=>`<tr><td class="mono"><b>${esc(o.numero)}</b></td><td class="mono">${esc(o.codB)}</td><td>${esc(dRed(o.codB,opDesc(o.codB)))}</td><td>${qSem(o)?"a informar":o.qtd+" "+esc(CAD.get(o.codB)?.unidade||"")}</td></tr>`).join("")}</tbody></table>`;
-let nfIds = [], colIds = [];
+let nfIds = [], colIds = [], nfBase = [], nfRows = [];   /* nfBase = OPs marcadas na tela; nfRows = conferência NF x OPs aguardando NF */
 /* leitura automática do PDF (DANFE): chave de acesso de 44 dígitos -> número, série; data de emissão */
 let pdfjsP = null, nfChave = null, nfItens = [];
 function pdfjsLoad(){
@@ -2007,12 +2008,70 @@ function nfParse(t){
   if(!dt && chave){ const c=ds.find(okAm); if(c) dt=`${c.y}-${c.m}-${c.d}`; }
   return {num, serie, chave, dt};
 }
+/* nota compartilhada: confere cada item da NF com as OPs "Aguardando NF" (código + quantidade) e sugere replicar a NF nelas */
+const keyCod = c => nk(c).replace(/B$/,"");
+function nfCasa(){
+  const itens = nfItens||[]; nfRows = [];
+  if(!itens.length) return;
+  const g = new Map();
+  itens.forEach(it=>{ const k=keyCod(it.c); const x=g.get(k)||{k, c:it.c, d:it.d, u:it.u, q:0}; x.q+=it.q; g.set(k,x); });
+  const aguard = ops.filter(o=>o.status==="aguardaNF");
+  const base = new Set(nfBase);
+  for(const x of g.values()){
+    const cands = aguard.filter(o=>keyCod(o.codB)===x.k).sort((a,b)=>(base.has(b.id)-base.has(a.id))||((a.entExpEm||"").localeCompare(b.entExpEm||"")));
+    const soma = l => l.reduce((a,o)=>a+(o.qtd||0),0);
+    let esc_ = [], st = "sem", nota = "";
+    if(cands.length){
+      if(Math.abs(soma(cands)-x.q)<1e-4){ esc_ = cands; st="ok"; }
+      else {
+        /* procura o conjunto de OPs do mesmo código cuja soma fecha a quantidade da NF (prefere as já marcadas) */
+        let best=null; const n=Math.min(cands.length,14);
+        for(let m=1;m<(1<<n);m++){ const l=cands.filter((_,i)=>m&(1<<i)); if(Math.abs(soma(l)-x.q)<1e-4){ const sc=l.filter(o=>base.has(o.id)).length*100-l.length; if(!best||sc>best.sc) best={sc,l}; } }
+        if(best){ esc_=best.l; st="ok"; } else { esc_=cands.filter(o=>base.has(o.id)); st="dif"; }
+      }
+    } else {
+      const outra = ops.find(o=>keyCod(o.codB)===x.k && emPre(o) && o.status!=="aguardaNF");
+      if(outra) nota = `OP ${outra.numero} deste código ainda está em "${OP_ST[outra.status]}" (não foi entregue à expedição)`;
+    }
+    nfRows.push({k:x.k, c:x.c, d:x.d, u:x.u, q:x.q, cands, sel:esc_, st, nota, soma:soma(esc_.length?esc_:cands)});
+  }
+  /* OPs marcadas que não estão na NF */
+  const nas = new Set(nfRows.map(r=>r.k));
+  nfRows.fora = nfBase.map(i=>ops.find(o=>o.id===i)).filter(o=>o && !nas.has(keyCod(o.codB)));
+}
+const nfSelIds = () => { const s=new Set(nfBase); document.querySelectorAll('#nf-conf input[data-op]').forEach(c=>{ if(c.checked) s.add(c.dataset.op); }); return [...s]; };
+window.nfConfAtual = () => {
+  nfIds = nfSelIds();
+  const l = nfIds.map(i=>ops.find(o=>o.id===i)).filter(Boolean);
+  $("nf-lista").innerHTML = miniTab(l);
+  const ex = nfIds.length-nfBase.length; const b=$("nf-btn"); if(b) b.textContent = ex>0 ? `✓ Confirmar NF emitida (${nfIds.length} OPs)` : "✓ Confirmar NF emitida";
+};
+function nfConfRender(){
+  const box=$("nf-conf"); nfCasa();
+  if(!nfRows.length){ box.style.display="none"; box.innerHTML=""; nfConfAtual(); return; }
+  const base=new Set(nfBase);
+  const tr = nfRows.map(r=>{
+    const cor = r.st==="ok" ? "#065f46" : "#b45309";
+    let ops_;
+    if(!r.cands.length) ops_ = `<span class="mut">nenhuma OP aguardando NF</span>${r.nota?`<div class="mut" style="font-size:11px">${esc(r.nota)}</div>`:""}`;
+    else ops_ = r.cands.map(o=>{ const marcada=base.has(o.id), sug=r.sel.includes(o);
+      return `<label style="display:flex;align-items:center;gap:6px;font-weight:400;margin:2px 0"><input type="checkbox" style="width:18px;height:18px;margin:0;flex:none" data-op="${o.id}" ${(marcada||sug)?"checked":""} ${marcada?"disabled":""} onchange="nfConfAtual()"><span>OP <b>${esc(o.numero)}</b> · ${o.qtd||0} ${esc(r.u)}${marcada?` <span class="mut">(marcada)</span>`:""}</span></label>`; }).join("");
+    const st = r.st==="ok" ? "✓ quantidade confere" : r.st==="dif" ? `⚠ OPs somam ${r.soma}, a NF tem ${r.q}` : "⚠ sem OP para este item";
+    return `<tr><td class="mono">${esc(r.c)}</td><td style="text-align:right">${r.q} ${esc(r.u)}</td><td>${ops_}</td><td style="color:${cor};font-weight:600">${st}</td></tr>`; }).join("");
+  const nExtra = nfRows.reduce((a,r)=>a+r.sel.filter(o=>!base.has(o.id)).length,0);
+  const fora = nfRows.fora||[];
+  box.style.display="";
+  box.innerHTML = `<div style="font-weight:700;margin-bottom:4px">Itens da NF x OPs aguardando NF</div>${nExtra?`<div class="ro" style="background:#eff6ff;color:#1e40af;margin-bottom:6px">Esta NF é <b>compartilhada</b>: encontrei mais ${nExtra} OP(s) aguardando NF com a mesma quantidade. Já deixei marcadas — desmarque as que não forem desta NF.</div>`:""}
+    <div style="max-height:34vh;overflow:auto"><table class="gt"><thead><tr><th>Código (NF)</th><th>Qtd NF</th><th>OP(s)</th><th>Conferência</th></tr></thead><tbody>${tr}</tbody></table></div>
+    ${fora.length?`<div class="ro" style="background:#fffbeb;color:#92400e;margin-top:6px">⚠ OP(s) marcada(s) que não aparecem nesta NF: <b>${esc(fora.map(o=>o.numero).join(", "))}</b></div>`:""}`;
+  nfConfAtual();
+}
 window.nfLer = async () => {
   const f=$("nf-arq").files[0], box=$("nf-ler"), wrap=$("nf-num-wrap"); nfChave=null; nfItens=[];
   const say=(html,ok)=>{ box.style.display=""; box.style.background=ok?"#ecfdf5":"#fffbeb"; box.style.color=ok?"#065f46":"#92400e"; box.innerHTML=html; };
-  if(!f){ box.style.display="none"; wrap.style.display=""; return; }
+  if(!f){ box.style.display="none"; wrap.style.display=""; nfConfRender(); return; }
   if(f.type && f.type!=="application/pdf"){ wrap.style.display=""; return say("Só leio o número automaticamente em <b>PDF</b>. Digite o número da NF abaixo.",false); }
-  say("Lendo o PDF…",true); wrap.style.display="none";
+  say("Lendo o PDF…",true); wrap.style.display="none"; nfConfRender();
   try{
     const lib=await pdfjsLoad(), pdf=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise; let t="";
     const pgs=[];
@@ -2021,6 +2080,7 @@ window.nfLer = async () => {
     const r=nfParse(t); nfItens=nfItensParse(pgs);
     const nIt = nfItens.length ? ` · ${nfItens.length} item(ns) lido(s)` : " · itens não reconhecidos";
     if(r.dt) $("nf-dt").value=r.dt;
+    nfConfRender();
     if(r.chave && r.num){ nfChave=r.chave; $("nf-num").value=r.num; say(`✓ NF <b>${esc(r.num)}</b> (série ${esc(r.serie)})${r.dt?" · emissão <b>"+fmtD(r.dt)+"</b>":""} — lida do PDF${nIt}. <a href="#" onclick="$('nf-num-wrap').style.display='';return false">corrigir</a>`,true); }
     else if(r.num){ $("nf-num").value=r.num; wrap.style.display=""; say(`Encontrei o número <b>${esc(r.num)}</b>, mas não a chave de acesso. <b>Confira</b> se está certo.`,false); }
     else { $("nf-num").value=""; wrap.style.display=""; say("Não consegui ler o número neste PDF. Digite o número da NF abaixo.",false); }
@@ -2030,6 +2090,7 @@ window.openNF = ids => {
   if(!canNFe()) return alert("A emissão da NF é informada pela Expedição ou pelo PCP.");
   nfIds = (ids||[...selNF]).filter(i=>ops.find(o=>o.id===i&&o.status==="aguardaNF"));
   if(!nfIds.length) return alert("Marque as OPs que tiveram a NF emitida.");
+  nfBase = [...nfIds]; nfRows = []; $("nf-conf").style.display="none"; $("nf-conf").innerHTML="";
   $("nf-lista").innerHTML = miniTab(nfIds.map(i=>ops.find(o=>o.id===i)));
   $("nf-num").value=""; $("nf-dt").value=isoHoje(); $("nf-arq").value=""; nfChave=null; nfItens=[]; $("nf-ler").style.display="none"; $("nf-num-wrap").style.display=""; $("dNF").showModal(); setTimeout(()=>$("nf-num").focus(),50);
 };
@@ -2037,6 +2098,15 @@ window.saveNF = async () => {
   if(!canNFe()) return;
   const num=$("nf-num").value.trim(), dt=$("nf-dt").value, f=$("nf-arq").files[0];
   if(!num) return alert(f?"Não consegui ler o número neste PDF. Digite o número da NF.":"Anexe o PDF da NF (ou digite o número)."); if(!dt) return alert("Informe a data de emissão.");
+  nfIds = nfSelIds().filter(i=>ops.find(o=>o.id===i&&o.status==="aguardaNF"));
+  if(nfRows.length){
+    const pend = nfRows.filter(r=>{ const m=nfIds.map(i=>ops.find(o=>o.id===i)).filter(o=>o&&keyCod(o.codB)===r.k); return Math.abs(m.reduce((a,o)=>a+(o.qtd||0),0)-r.q)>1e-4; });
+    const fora = (nfRows.fora||[]).filter(o=>nfIds.includes(o.id));
+    if(pend.length||fora.length){
+      const txt = [...pend.map(r=>`• ${r.c}: NF ${r.q} ${r.u}`+(r.cands.length?` x OPs marcadas ${nfIds.map(i=>ops.find(o=>o.id===i)).filter(o=>o&&keyCod(o.codB)===r.k).reduce((a,o)=>a+(o.qtd||0),0)}`:" (sem OP aguardando NF)")), ...fora.map(o=>`• OP ${o.numero} (${o.codB}) não está na NF`)].join("\n");
+      if(!confirm("Há diferenças entre a NF e as OPs:\n\n"+txt+"\n\nRegistrar a NF assim mesmo?")) return;
+    }
+  }
   let nfId=null;
   if(f){
     if(f.size>NF_MAX) return alert(`Arquivo grande demais (${Math.round(f.size/1024)} KB). O limite é ${NF_MAX/1024} KB: gere o PDF da NF em tamanho menor.`);
@@ -2047,10 +2117,10 @@ window.saveNF = async () => {
   } else if(!confirm("Nenhum PDF anexado. A Logística não conseguirá imprimir a NF pelo sistema.\n\nConfirmar assim mesmo?")) return;
   for(const id of nfIds){
     const o=ops.find(x=>x.id===id); if(!o) continue;
-    await opUpd(id,{status:"nfEmitida", nfNumero:num, nfDt:dt, nfId, nfChave:nfChave||null, nfItens:nfItens.length?nfItens:null, nfEmEm:now(), nfPor:meStr()},"nf",`NF ${num} emitida em ${fmtD(dt)}${nfId?" · PDF anexado":" · sem PDF"} — aguardando coleta pelo terceiro`);
+    await opUpd(id,{status:"nfEmitida", nfNumero:num, nfDt:dt, nfId, nfChave:nfChave||null, nfItens:nfItens.length?nfItens:null, nfEmEm:now(), nfPor:meStr()},"nf",`NF ${num} emitida em ${fmtD(dt)}${nfId?" · PDF anexado":" · sem PDF"}${nfIds.length>1?` · nota compartilhada por ${nfIds.length} OPs`:""}${nfBase.includes(id)?"":" · replicada automaticamente (código e quantidade conferem com a NF)"} — aguardando coleta pelo terceiro`);
     selNF.delete(id);
   }
-  $("dNF").close(); toast(`NF ${esc(num)} registrada para ${nfIds.length} OP(s). A Logística já pode imprimir e aguardar a coleta.`);
+  $("dNF").close(); toast(`NF ${esc(num)} registrada para ${nfIds.length} OP(s)${nfIds.length>nfBase.length?` (${nfIds.length-nfBase.length} replicada(s) da nota compartilhada)`:""}. A Logística já pode imprimir e aguardar a coleta.`);
 };
 window.nfAbrir = async id => {
   const o=ops.find(x=>x.id===id); if(!o) return;
